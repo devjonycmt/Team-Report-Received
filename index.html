@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard - Portal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS for Excel Download -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- FontAwesome Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+  </head>
+  <body class="bg-gray-100 font-sans">
+    <div class="flex h-screen overflow-hidden">
+      <!-- Sidebar -->
+      <div class="w-64 bg-slate-900 text-white flex flex-col justify-between">
+        <div>
+          <div class="p-5 text-2xl font-bold tracking-wider text-indigo-400">
+            Admin Panel
+          </div>
+          <nav class="px-4 space-y-2">
+            <button
+              onclick="switchTab('dashboard')"
+              id="btn-dashboard"
+              class="w-full text-left px-4 py-2.5 rounded bg-slate-800 font-medium transition"
+            >
+              Dashboard
+            </button>
+            <button
+              onclick="switchTab('reports')"
+              id="btn-reports"
+              class="w-full text-left px-4 py-2.5 rounded hover:bg-slate-800 font-medium transition"
+            >
+              Reports Received
+            </button>
+            <button
+              onclick="switchTab('users')"
+              id="btn-users"
+              class="w-full text-left px-4 py-2.5 rounded hover:bg-slate-800 font-medium transition"
+            >
+              User Accounts
+            </button>
+            <button
+              onclick="switchTab('payments')"
+              id="btn-payments"
+              class="w-full text-left px-4 py-2.5 rounded hover:bg-slate-800 font-medium transition"
+            >
+              Payment Info
+            </button>
+          </nav>
+        </div>
+        <div class="p-4 text-xs text-slate-400">Admin Version: v1.0.0</div>
+      </div>
+
+      <!-- Main Content Area -->
+      <div class="flex-1 flex flex-col overflow-y-auto">
+        <header
+          class="bg-white shadow px-6 py-4 flex justify-between items-center"
+        >
+          <h1 class="text-xl font-bold text-gray-800" id="page-title">
+            Dashboard Overview
+          </h1>
+          <span class="text-sm font-semibold text-indigo-600"
+            >Admin Control</span
+          >
+        </header>
+
+        <main class="p-6 space-y-8">
+          <!-- 1. Dashboard Tab -->
+          <div id="tab-dashboard" class="space-y-6">
+            <!-- Today Section -->
+            <div>
+              <h2
+                class="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2"
+              >
+                <span
+                  class="w-3 h-3 bg-emerald-500 rounded-full inline-block"
+                ></span>
+                Today's Summary
+              </h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div
+                  class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"
+                >
+                  <span class="text-xs font-bold text-slate-400 uppercase"
+                    >Today Total Accounts</span
+                  >
+                  <h3
+                    id="today-total"
+                    class="text-2xl font-extrabold text-slate-800 mt-1"
+                  >
+                    0
+                  </h3>
+                </div>
+                <div
+                  class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"
+                >
+                  <span class="text-xs font-bold text-emerald-500 uppercase"
+                    >Today Good Report</span
+                  >
+                  <h3
+                    id="today-good"
+                    class="text-2xl font-extrabold text-emerald-600 mt-1"
+                  >
+                    0
+                  </h3>
+                </div>
+                <div
+                  class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"
+                >
+                  <span class="text-xs font-bold text-rose-500 uppercase"
+                    >Today Bad Report</span
+                  >
+                  <h3
+                    id="today-bad"
+                    class="text-2xl font-extrabold text-rose-500 mt-1"
+                  >
+                    0
+                  </h3>
+                </div>
+                <div
+                  class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"
+                >
+                  <span class="text-xs font-bold text-purple-500 uppercase"
+                    >Today Total Amount</span
+                  >
+                  <h3
+                    id="today-amount"
+                    class="text-2xl font-extrabold text-purple-600 mt-1"
+                  >
+                    0 BDT
+                  </h3>
+                </div>
+              </div>
+            </div>
+
+            <!-- This Month Section -->
+            <div>
+              <h2
+                class="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2"
+              >
+                <span
+                  class="w-3 h-3 bg-indigo-500 rounded-full inline-block"
+                ></span>
+                This Month's Summary
+              </h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div
+                  class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"
+                >
+                  <span class="text-xs font-bold text-slate-400 uppercase"
+                    >Month Total Accounts</span
+                  >
+                  <h3
+                    id="month-total"
+                    class="text-2xl font-extrabold text-slate-800 mt-1"
+                  >
+                    0
+                  </h3>
+                </div>
+                <div
+                  class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"
+                >
+                  <span class="text-xs font-bold text-emerald-500 uppercase"
+                    >Month Good Report</span
+                  >
+                  <h3
+                    id="month-good"
+                    class="text-2xl font-extrabold text-emerald-600 mt-1"
+                  >
+                    0
+                  </h3>
+                </div>
+                <div
+                  class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"
+                >
+                  <span class="text-xs font-bold text-rose-500 uppercase"
+                    >Month Bad Report</span
+                  >
+                  <h3
+                    id="month-bad"
+                    class="text-2xl font-extrabold text-rose-500 mt-1"
+                  >
+                    0
+                  </h3>
+                </div>
+                <div
+                  class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"
+                >
+                  <span class="text-xs font-bold text-purple-500 uppercase"
+                    >Month Total Amount</span
+                  >
+                  <h3
+                    id="month-amount"
+                    class="text-2xl font-extrabold text-purple-600 mt-1"
+                  >
+                    0 BDT
+                  </h3>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Reports Received Tab -->
+          <div id="tab-reports" class="hidden space-y-6">
+            <div
+              class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6"
+            >
+              <div
+                class="flex flex-col md:flex-row justify-between items-center gap-4"
+              >
+                <h3 class="text-lg font-bold text-gray-800">
+                  Reports Received by Category
+                </h3>
+                <!-- Date Filter Section (Reset removed, default today will be handled via JS) -->
+                <div class="flex items-center gap-3">
+                  <label class="text-xs font-semibold text-slate-500"
+                    >Filter by Date:</label
+                  >
+                  <input
+                    type="date"
+                    id="report-date-filter"
+                    onchange="filterReportsAndStats()"
+                    class="border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <!-- Category Tabs Navigation -->
+              <div
+                id="category-tabs-container"
+                class="flex flex-wrap gap-2 border-b border-slate-100 pb-4"
+              >
+                <!-- Dynamic Category Tabs -->
+              </div>
+
+              <!-- Selected Category Today Summary Cards -->
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <span class="text-[11px] font-bold text-slate-400 uppercase"
+                    >Today Total Count</span
+                  >
+                  <h4
+                    id="cat-today-total"
+                    class="text-xl font-extrabold text-slate-800 mt-1"
+                  >
+                    0
+                  </h4>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <span class="text-[11px] font-bold text-emerald-500 uppercase"
+                    >Today Good Report</span
+                  >
+                  <h4
+                    id="cat-today-good"
+                    class="text-xl font-extrabold text-emerald-600 mt-1"
+                  >
+                    0
+                  </h4>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <span class="text-[11px] font-bold text-rose-500 uppercase"
+                    >Today Bad Report</span
+                  >
+                  <h4
+                    id="cat-today-bad"
+                    class="text-xl font-extrabold text-rose-500 mt-1"
+                  >
+                    0
+                  </h4>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <span class="text-[11px] font-bold text-purple-500 uppercase"
+                    >Today Total Amount</span
+                  >
+                  <h4
+                    id="cat-today-amount"
+                    class="text-xl font-extrabold text-purple-600 mt-1"
+                  >
+                    0 BDT
+                  </h4>
+                </div>
+              </div>
+
+              <!-- Reports Table -->
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr
+                      class="border-b border-slate-100 text-xs font-semibold text-slate-500"
+                    >
+                      <th class="py-3 px-4">Date</th>
+                      <th class="py-3 px-4">User</th>
+                      <th class="py-3 px-4">Category</th>
+                      <th class="py-3 px-4">File Name</th>
+                      <th class="py-3 px-4">Total</th>
+                      <th class="py-3 px-4">Good</th>
+                      <th class="py-3 px-4">Bad</th>
+                      <th class="py-3 px-4">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-reports-table">
+                    <!-- Dynamic Data -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. User Accounts Tab -->
+          <div id="tab-users" class="hidden space-y-6">
+            <div
+              class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"
+            >
+              <h3 class="text-lg font-bold text-gray-800 mb-4">
+                User Account Information & Payments
+              </h3>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr
+                      class="border-b border-slate-100 text-xs font-semibold text-slate-500"
+                    >
+                      <th class="py-3 px-4">User Name</th>
+                      <th class="py-3 px-4">Good Accounts</th>
+                      <th class="py-3 px-4">Bad Accounts</th>
+                      <th class="py-3 px-4">Total Amount</th>
+                      <th class="py-3 px-4">Payment Status</th>
+                      <th class="py-3 px-4">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-users-table">
+                    <!-- Dynamic Data -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Payment Info Tab -->
+          <div id="tab-payments" class="hidden space-y-6">
+            <div
+              class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"
+            >
+              <h3 class="text-lg font-bold text-gray-800 mb-4">
+                Payment Confirmations
+              </h3>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr
+                      class="border-b border-slate-100 text-xs font-semibold text-slate-500"
+                    >
+                      <th class="py-3 px-4">User Name</th>
+                      <th class="py-3 px-4">Date</th>
+                      <th class="py-3 px-4">Good Accounts</th>
+                      <th class="py-3 px-4">Total Amount</th>
+                      <th class="py-3 px-4">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-payments-table">
+                    <!-- Dynamic Data -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <!-- External Script File -->
+    <script src="script.js"></script>
+  </body>
+</html>
