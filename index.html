@@ -80,72 +80,6 @@
         <main class="p-6 space-y-8">
           <!-- 1. Dashboard Tab -->
           <div id="tab-dashboard" class="space-y-6">
-            <!-- Today Section -->
-            <div>
-              <h2
-                class="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2"
-              >
-                <span
-                  class="w-3 h-3 bg-emerald-500 rounded-full inline-block"
-                ></span>
-                Today's Summary
-              </h2>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div
-                  class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"
-                >
-                  <span class="text-xs font-bold text-slate-400 uppercase"
-                    >Today Total Accounts</span
-                  >
-                  <h3
-                    id="today-total"
-                    class="text-2xl font-extrabold text-slate-800 mt-1"
-                  >
-                    0
-                  </h3>
-                </div>
-                <div
-                  class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"
-                >
-                  <span class="text-xs font-bold text-emerald-500 uppercase"
-                    >Today Good Report</span
-                  >
-                  <h3
-                    id="today-good"
-                    class="text-2xl font-extrabold text-emerald-600 mt-1"
-                  >
-                    0
-                  </h3>
-                </div>
-                <div
-                  class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"
-                >
-                  <span class="text-xs font-bold text-rose-500 uppercase"
-                    >Today Bad Report</span
-                  >
-                  <h3
-                    id="today-bad"
-                    class="text-2xl font-extrabold text-rose-500 mt-1"
-                  >
-                    0
-                  </h3>
-                </div>
-                <div
-                  class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200"
-                >
-                  <span class="text-xs font-bold text-purple-500 uppercase"
-                    >Today Total Amount</span
-                  >
-                  <h3
-                    id="today-amount"
-                    class="text-2xl font-extrabold text-purple-600 mt-1"
-                  >
-                    0 BDT
-                  </h3>
-                </div>
-              </div>
-            </div>
-
             <!-- This Month Section -->
             <div>
               <h2
@@ -324,70 +258,11 @@
           <!-- 3. User Reports Tab (Replaced User Accounts) -->
           <div id="tab-users" class="hidden space-y-6">
             <div
-              class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6"
+              class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"
             >
-              <h3 class="text-lg font-bold text-gray-800">
+              <h3 class="text-lg font-bold text-gray-800 mb-4">
                 Received User Reports & Payments
               </h3>
-
-              <!-- Rate Configuration Section -->
-              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <h4
-                  class="text-xs font-bold text-slate-700 mb-3 uppercase tracking-wider"
-                >
-                  Account Rate Settings (Per Good Account)
-                </h4>
-                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
-                  <div>
-                    <label
-                      class="block text-xs font-semibold text-slate-600 mb-1"
-                      >Regular Rate (tk)</label
-                    >
-                    <input
-                      type="number"
-                      id="rate-regular"
-                      value="5"
-                      step="0.01"
-                      class="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-600 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      class="block text-xs font-semibold text-slate-600 mb-1"
-                      >100+ Rate (tk)</label
-                    >
-                    <input
-                      type="number"
-                      id="rate-100"
-                      value="5.10"
-                      step="0.01"
-                      class="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-600 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      class="block text-xs font-semibold text-slate-600 mb-1"
-                      >500+ Rate (tk)</label
-                    >
-                    <input
-                      type="number"
-                      id="rate-500"
-                      value="5.30"
-                      step="0.01"
-                      class="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-600 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <button
-                      onclick="calculateAndUpdateAmounts()"
-                      class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg text-xs font-semibold transition cursor-pointer shadow-sm"
-                    >
-                      Submit & Calculate Amount
-                    </button>
-                  </div>
-                </div>
-              </div>
-
               <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                   <thead>

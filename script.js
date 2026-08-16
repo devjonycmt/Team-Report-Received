@@ -6,12 +6,30 @@ const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let allSubmissions = [];
 let allProfiles = {};
 let currentSelectedCategory = "All";
+// ডেট ইনপুটে তারিখ পরিবর্তন করলে সাথে সাথে ডাটা ও স্ট্যাটস আপডেট করার জন্য
+const dateFilterEl = document.getElementById("report-date-filter");
+if (dateFilterEl) {
+  dateFilterEl.addEventListener("change", function () {
+    filterReportsAndStats();
+  });
+}
+
 window.onload = function () {
-  // ডিফল্টভাবে আজকের তারিখ ইনপুটে বসিয়ে দেওয়া
-  const todayStr = new Date().toISOString().split("T")[0];
+  // লোকাল সময় অনুযায়ী সঠিক আজকের তারিখ (YYYY-MM-DD) বের করার সঠিক পদ্ধতি
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const todayStr = `${year}-${month}-${day}`;
+
   const dateInput = document.getElementById("report-date-filter");
   if (dateInput) {
-    dateInput.value = todayStr;
+    dateInput.value = todayStr; // এটি এখন সঠিকভাবে আজকের তারিখ (১৭ তারিখ) সেট করবে
+
+    // ডেট পরিবর্তন করলে সাথে সাথে ফিল্টার ও স্ট্যাটস আপডেট করার ইভেন্ট লিসেনার
+    dateInput.addEventListener("change", function () {
+      filterReportsAndStats();
+    });
   }
 
   fetchAdminDashboardStats();
@@ -82,21 +100,17 @@ function formatCustomDate(dateStr) {
   return `${day} ${month} ${year}, ${hours}:${minutes}:${seconds} ${ampm}`;
 }
 
-// ১. ড্যাশবোর্ড স্ট্যাটস
+// ১. ড্যাশবোর্ড স্ট্যাটস (শুধু এই মাসের ডাটা রাখার জন্য)
 async function fetchAdminDashboardStats() {
   const { data: submissions, error } = await _supabase
     .from("file_submissions")
     .select("*");
   if (error) return;
 
-  const todayStr = new Date().toISOString().split("T")[0];
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
+  const d = new Date();
+  const currentMonth = d.getMonth();
+  const currentYear = d.getFullYear();
 
-  let todayTotal = 0,
-    todayGood = 0,
-    todayBad = 0,
-    todayAmount = 0;
   let monthTotal = 0,
     monthGood = 0,
     monthBad = 0,
@@ -105,20 +119,13 @@ async function fetchAdminDashboardStats() {
   submissions.forEach((sub) => {
     if (!sub.created_at) return;
     const subDate = new Date(sub.created_at);
-    const subDateStr = sub.created_at.split("T")[0];
 
     const totalAcc = Number(sub.account_count || 0);
     const goodAcc = Number(sub.good_count || 0);
     const badAcc = Number(sub.bad_count || 0);
     const amountAcc = Number(sub.total_amount || 0);
 
-    if (subDateStr === todayStr) {
-      todayTotal += totalAcc;
-      todayGood += goodAcc;
-      todayBad += badAcc;
-      todayAmount += amountAcc;
-    }
-
+    // এই মাসের ডাটা হিসাব করা
     if (
       subDate.getMonth() === currentMonth &&
       subDate.getFullYear() === currentYear
@@ -130,17 +137,12 @@ async function fetchAdminDashboardStats() {
     }
   });
 
-  document.getElementById("today-total").innerText = todayTotal;
-  document.getElementById("today-good").innerText = todayGood;
-  document.getElementById("today-bad").innerText = todayBad;
-  document.getElementById("today-amount").innerText = todayAmount + " BDT";
-
+  // UI কার্ডগুলোতে শুধু মাসের মান বসানো
   document.getElementById("month-total").innerText = monthTotal;
   document.getElementById("month-good").innerText = monthGood;
   document.getElementById("month-bad").innerText = monthBad;
   document.getElementById("month-amount").innerText = monthAmount + " BDT";
 }
-
 // ২. রিপোর্ট ট্যাব এবং ক্যাটাগরি লোড
 async function fetchAdminReports() {
   const { data: submissions, error } = await _supabase
@@ -277,6 +279,7 @@ function downloadCurrentCategoryAllData() {
 }
 
 // ডেট এবং ক্যাটাগরি ফিল্টার অনুযায়ী টেবিল এবং কার্ডের স্ট্যাটস আপডেট করার ফাংশন
+// ডেট এবং ক্যাটাগরি ফিল্টার অনুযায়ী টেবিল এবং কার্ডের স্ট্যাটস আপডেট করার ফাংশন
 function filterReportsAndStats() {
   const selectedDate = document.getElementById("report-date-filter").value;
 
@@ -297,30 +300,22 @@ function filterReportsAndStats() {
     catSelectedBad = 0,
     catSelectedAmount = 0;
 
-  // ফিল্টারকৃত ডাটা (সিলেক্টেড ডেট ও ক্যাটাগরি) থেকে কার্ডের স্ট্যাটস হিসাব করা হচ্ছে
-  allSubmissions.forEach((sub) => {
-    if (!sub.created_at) return;
-    const subDateStr = sub.created_at.split("T")[0];
-
-    const matchesCategory =
-      currentSelectedCategory === "All" ||
-      sub.category === currentSelectedCategory;
-    const matchesDate = selectedDate ? subDateStr === selectedDate : true;
-
-    if (matchesCategory && matchesDate) {
-      catSelectedTotal += Number(sub.account_count || 0);
-      catSelectedGood += Number(sub.good_count || 0);
-      catSelectedBad += Number(sub.bad_count || 0);
-      catSelectedAmount += Number(sub.total_amount || 0);
-    }
+  // সরাসরি ফিল্টারকৃত ডাটা (filtered) থেকে হিসাব করা হচ্ছে (ডাবল লুপ বাদ দেওয়া হলো)
+  filtered.forEach((sub) => {
+    catSelectedTotal += Number(sub.account_count || 0);
+    catSelectedGood += Number(sub.good_count || 0);
+    catSelectedBad += Number(sub.bad_count || 0);
+    catSelectedAmount += Number(sub.total_amount || 0);
   });
 
+  // UI কার্ডগুলোর মান আপডেট করা
   document.getElementById("cat-today-total").innerText = catSelectedTotal;
   document.getElementById("cat-today-good").innerText = catSelectedGood;
   document.getElementById("cat-today-bad").innerText = catSelectedBad;
   document.getElementById("cat-today-amount").innerText =
     catSelectedAmount + " BDT";
 
+  // টেবিল রেন্ডার করা
   renderReportsTable(filtered);
 }
 
@@ -493,16 +488,21 @@ async function fetchUserAccountInfo() {
   });
 }
 async function calculateAndUpdateAmounts() {
-  const rateRegular = Number(document.getElementById("rate-regular").value) || 5;
-  const rate100 = Number(document.getElementById("rate-100").value) || 5.10;
-  const rate500 = Number(document.getElementById("rate-500").value) || 5.30;
+  const rateRegular =
+    Number(document.getElementById("rate-regular").value) || 5;
+  const rate100 = Number(document.getElementById("rate-100").value) || 5.1;
+  const rate500 = Number(document.getElementById("rate-500").value) || 5.3;
 
   if (!window.allSubmissions || window.allSubmissions.length === 0) {
     alert("No submissions available to update!");
     return;
   }
 
-  if (!confirm("Are you sure you want to calculate and update total amounts for all listed user reports?")) {
+  if (
+    !confirm(
+      "Are you sure you want to calculate and update total amounts for all listed user reports?",
+    )
+  ) {
     return;
   }
 
@@ -510,15 +510,20 @@ async function calculateAndUpdateAmounts() {
 
   for (const sub of window.allSubmissions) {
     const goodCount = Number(sub.good_count || 0);
-    let currentRate = rateRegular;
+    let calculatedAmount = 0;
 
-    if (goodCount >= 500) {
-      currentRate = rate500;
-    } else if (goodCount >= 100) {
-      currentRate = rate100;
+    // গুড অ্যাকাউন্ট শূন্যের বেশি হলে রেট হিসাব হবে, নতুবা অ্যামাউন্ট ০ থাকবে
+    if (goodCount > 0) {
+      let currentRate = rateRegular;
+
+      if (goodCount >= 500) {
+        currentRate = rate500;
+      } else if (goodCount >= 100) {
+        currentRate = rate100;
+      }
+
+      calculatedAmount = Number((goodCount * currentRate).toFixed(2));
     }
-
-    const calculatedAmount = Number((goodCount * currentRate).toFixed(2));
 
     const { error } = await _supabase
       .from("file_submissions")
@@ -535,7 +540,6 @@ async function calculateAndUpdateAmounts() {
   alert(`Successfully updated total amount for ${updatedCount} reports!`);
   fetchUserAccountInfo();
 }
-
 
 // Payment Pending বাটনে ক্লিক করলে payment_requests টেবিলে status 'payment_ready' হিসেবে জমা হবে
 async function sendPaymentToPending(subId) {
@@ -837,11 +841,18 @@ function downloadCurrentCategoryAllData() {
   XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
   XLSX.writeFile(workbook, fileName);
 }
+// হার্ডকোড করা অ্যাকাউন্ট রেট
+const ACCOUNT_RATES = {
+  regular: 5,
+  rate100: 5.1,
+  rate500: 5.3,
+};
+
 async function processReportCheck() {
   const categorySelect = document.getElementById("report-category-select");
-  const selectedCategory = categorySelect.value;
+  const selectedCategory = categorySelect ? categorySelect.value : "";
   const textarea = document.getElementById("good-accounts-input");
-  const rawData = textarea.value.trim();
+  const rawData = textarea ? textarea.value.trim() : "";
 
   if (!selectedCategory) {
     alert("Please select a category first!");
@@ -853,7 +864,6 @@ async function processReportCheck() {
     return;
   }
 
-  // ১. ইনপুট করা গুড ইউজারনেমগুলোকে ট্রিম এবং লোয়ারকেস করে একটি Set এ রাখা
   const goodList = new Set(
     rawData
       .split("\n")
@@ -861,7 +871,6 @@ async function processReportCheck() {
       .filter(Boolean),
   );
 
-  // ২. নির্বাচিত ক্যাটাগরির সমস্ত সাবমিশন ডাটাবেজ থেকে ফেচ করা
   const { data: submissions, error } = await _supabase
     .from("file_submissions")
     .select("*")
@@ -879,7 +888,6 @@ async function processReportCheck() {
 
   let totalUpdated = 0;
 
-  // ৩. সাবমিশনগুলো লুপ চালিয়ে প্রতিটি ফাইলের অ্যাকাউন্ট চেক করা
   for (const sub of submissions) {
     let goodCount = 0;
     let badCount = 0;
@@ -896,42 +904,56 @@ async function processReportCheck() {
       }
     }
 
-    if (!Array.isArray(parsedData) || parsedData.length === 0) continue;
+    if (Array.isArray(parsedData) && parsedData.length > 0) {
+      parsedData.forEach((acc) => {
+        let dbUsername = "";
 
-    // ৪. প্রতিটি অ্যাকাউন্টের ভেতরের 'username' ফিল্ডটি চেক করা
-    parsedData.forEach((acc) => {
-      let dbUsername = "";
-
-      if (typeof acc === "object" && acc !== null) {
-        const foundKey = Object.keys(acc).find(
-          (k) => k.toLowerCase() === "username",
-        );
-        if (foundKey) {
-          dbUsername = String(acc[foundKey]).trim().toLowerCase();
-        } else {
-          const values = Object.values(acc);
-          if (values.length > 0)
-            dbUsername = String(values[0]).trim().toLowerCase();
+        if (typeof acc === "object" && acc !== null) {
+          const foundKey = Object.keys(acc).find(
+            (k) => k.toLowerCase() === "username",
+          );
+          if (foundKey) {
+            dbUsername = String(acc[foundKey]).trim().toLowerCase();
+          } else {
+            const values = Object.values(acc);
+            if (values.length > 0)
+              dbUsername = String(values[0]).trim().toLowerCase();
+          }
         }
-      }
 
-      if (dbUsername) {
-        if (goodList.has(dbUsername)) {
-          goodCount++;
+        if (dbUsername) {
+          if (goodList.has(dbUsername)) {
+            goodCount++;
+          } else {
+            badCount++;
+          }
         } else {
           badCount++;
         }
-      } else {
-        badCount++;
-      }
-    });
+      });
+    }
 
-    // ৬. ডাটাবেজে শুধুমাত্র good_count এবং bad_count আপডেট করা (স্ট্যাটাস অপরিবর্তিত থাকবে)
+    // হার্ডকোড করা রেট অনুযায়ী স্বয়ংক্রিয়ভাবে মোট অ্যামাউন্ট হিসাব করা
+    let totalAmount = 0;
+    if (goodCount > 0) {
+      let currentRate = ACCOUNT_RATES.regular;
+
+      if (goodCount >= 500) {
+        currentRate = ACCOUNT_RATES.rate500;
+      } else if (goodCount >= 100) {
+        currentRate = ACCOUNT_RATES.rate100;
+      }
+
+      totalAmount = Number((goodCount * currentRate).toFixed(2));
+    }
+
+    // গুড, ব্যাড এবং টোটাল অ্যামাউন্ট একসাথে আপডেট করা
     const { error: updateError } = await _supabase
       .from("file_submissions")
       .update({
         good_count: goodCount,
         bad_count: badCount,
+        total_amount: totalAmount,
       })
       .eq("id", sub.id);
 
@@ -945,8 +967,8 @@ async function processReportCheck() {
   alert(
     `Report processed successfully! Updated ${totalUpdated} submissions for ${selectedCategory}.`,
   );
-  textarea.value = "";
 
+  if (textarea) textarea.value = "";
   if (typeof fetchAllReports === "function") fetchAllReports();
 }
 // ট্যাব সুইচ বা পরিবর্তন করার ফাংশন
@@ -983,7 +1005,7 @@ async function resetReportCheck() {
 
   if (
     !confirm(
-      `Are you sure you want to reset all good and bad counts to 0 for category: ${selectedCategory}?`,
+      `Are you sure you want to reset all good/bad counts and amount to 0 for category: ${selectedCategory}?`,
     )
   ) {
     return;
@@ -1012,6 +1034,7 @@ async function resetReportCheck() {
       .update({
         good_count: 0,
         bad_count: 0,
+        total_amount: 0, // গুড কাউন্ট জিরো হওয়ার সাথে সাথে টোটাল অ্যামাউন্টও জিরো হয়ে যাবে
       })
       .eq("id", sub.id);
 
@@ -1023,7 +1046,7 @@ async function resetReportCheck() {
   }
 
   alert(
-    `Successfully reset counts to 0 for ${totalReset} submissions in ${selectedCategory}.`,
+    `Successfully reset counts and amount to 0 for ${totalReset} submissions in ${selectedCategory}.`,
   );
 
   if (typeof fetchAdminReports === "function") {
