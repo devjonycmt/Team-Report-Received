@@ -21,7 +21,8 @@ window.onload = function () {
 };
 
 function switchTab(tabName) {
-  const tabs = ["dashboard", "reports", "users", "payments"];
+  // এখানে 'report-check' যুক্ত করা হলো
+  const tabs = ["dashboard", "reports", "users", "payments", "report-check"];
   tabs.forEach((t) => {
     const tabEl = document.getElementById(`tab-${t}`);
     const btnEl = document.getElementById(`btn-${t}`);
@@ -38,10 +39,15 @@ function switchTab(tabName) {
   const titles = {
     dashboard: "Dashboard Overview",
     reports: "Reports Received",
-    users: "User Account Information",
+    users: "User Reports",
     payments: "Payment Information",
+    "report-check": "Report Check", // নতুন ট্যাবের টাইটেল
   };
-  document.getElementById("page-title").innerText = titles[tabName];
+
+  const pageTitleEl = document.getElementById("page-title");
+  if (pageTitleEl && titles[tabName]) {
+    pageTitleEl.innerText = titles[tabName];
+  }
 }
 
 // কাস্টম ডেট ফরম্যাট ফাংশন
@@ -322,7 +328,6 @@ function resetDateFilter() {
   document.getElementById("report-date-filter").value = "";
   filterReportsAndStats();
 }
-
 // টেবিল রেন্ডার করা
 function renderReportsTable(dataToRender) {
   const tbody = document.getElementById("admin-reports-table");
@@ -330,7 +335,7 @@ function renderReportsTable(dataToRender) {
   tbody.innerHTML = "";
 
   if (!dataToRender || dataToRender.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="py-4 text-center text-slate-400 text-xs">No reports found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="py-4 text-center text-slate-400 text-xs">No reports found.</td></tr>`;
     return;
   }
 
@@ -338,23 +343,56 @@ function renderReportsTable(dataToRender) {
     const userName = allProfiles[sub.user_id] || "Unknown User";
     const formattedDate = formatCustomDate(sub.created_at);
 
+    // স্ট্যাটস চেক ও Cancel বাটন যুক্ত করা
+    const status = sub.status || "Pending";
+    let statusHtml = "";
+    if (status === "Received") {
+      statusHtml = `
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Received</span>
+          <button onclick="updateSubmissionStatus('${sub.id}', 'Pending')" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-1 rounded-md text-[10px] font-bold transition cursor-pointer shadow-sm" title="Cancel Received status">Cancel</button>
+        </div>
+      `;
+    } else {
+      statusHtml = `<button onclick="updateSubmissionStatus('${sub.id}', 'Received')" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold transition shadow-sm cursor-pointer">Mark Received</button>`;
+    }
+
     tbody.innerHTML += `
-            <tr class="border-b border-slate-100 text-xs">
-                <td class="py-3 px-4 text-slate-600">${formattedDate}</td>
-                <td class="py-3 px-4 font-bold text-slate-800">${userName}</td>
-                <td class="py-3 px-4 font-semibold text-indigo-600">${sub.category || "N/A"}</td>
-                <td class="py-3 px-4 text-slate-700">${sub.file_name || "Report"}</td>
-                <td class="py-3 px-4 font-bold">${sub.account_count || 0}</td>
-                <td class="py-3 px-4 font-bold text-emerald-600">${sub.good_count || 0}</td>
-                <td class="py-3 px-4 font-bold text-rose-500">${sub.bad_count || 0}</td>
-                <td class="py-3 px-4">
-                    <button onclick='downloadCategoryExcel(${JSON.stringify(sub.accounts_data || [])}, "${sub.category || "Report"}")' class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition">
-                        <i class="fa-solid fa-download mr-1"></i> Download
-                    </button>
-                </td>
-            </tr>
-        `;
+      <tr class="border-b border-slate-100 text-xs">
+        <td class="py-3 px-4 text-slate-600">${formattedDate}</td>
+        <td class="py-3 px-4 font-bold text-slate-800">${userName}</td>
+        <td class="py-3 px-4 font-semibold text-indigo-600">${sub.category || "N/A"}</td>
+        <td class="py-3 px-4 text-slate-700">${sub.file_name || "Report"}</td>
+        <td class="py-3 px-4 font-bold">${sub.account_count || 0}</td>
+        <td class="py-3 px-4 font-bold text-emerald-600">${sub.good_count || 0}</td>
+        <td class="py-3 px-4 font-bold text-rose-500">${sub.bad_count || 0}</td>
+        <td class="py-3 px-4">${statusHtml}</td>
+        <td class="py-3 px-4">
+          <button onclick='downloadCategoryExcel(${JSON.stringify(sub.accounts_data || [])}, "${sub.category || "Report"}")' class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition cursor-pointer">
+            <i class="fa-solid fa-download mr-1"></i> Download
+          </button>
+        </td>
+      </tr>
+    `;
   });
+}
+// স্ট্যাটস আপডেট করার ফাংশন (Received করার জন্য)
+async function updateSubmissionStatus(subId, newStatus) {
+  const { error } = await _supabase
+    .from("file_submissions")
+    .update({ status: newStatus })
+    .eq("id", subId);
+
+  if (error) {
+    alert("Failed to update status: " + error.message);
+  } else {
+    // লোকাল অ্যারে আপডেট করে ফিল্টার ও রেন্ডার রিফ্রেশ করা
+    const target = allSubmissions.find((s) => String(s.id) === String(subId));
+    if (target) {
+      target.status = newStatus;
+    }
+    filterReportsAndStats();
+  }
 }
 
 // সিঙ্গেল রিপোর্ট ডাউনলোডের ফাংশন
@@ -370,79 +408,213 @@ function downloadCategoryExcel(accountsArray, categoryName) {
   XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
   XLSX.writeFile(workbook, `${categoryName}_Report.xlsx`);
 }
-// ৩. ইউজার একাউন্ট ইনফরমেশন
+// ৩. ইউজার রিপোর্টস ট্যাব (Received এবং payment_ready স্ট্যাটাসসহ)
 async function fetchUserAccountInfo() {
-  const { data: profiles } = await _supabase.from("profiles").select("*");
-  const { data: submissions } = await _supabase
+  const { data: submissions, error } = await _supabase
     .from("file_submissions")
-    .select("*");
+    .select("*")
+    .in("status", ["Received", "payment_ready"])
+    .order("created_at", { ascending: false });
 
-  const tbody = document.getElementById("admin-users-table");
-  if (!tbody || !profiles) return;
+  window.allSubmissions = submissions || [];
+
+  const { data: profiles } = await _supabase
+    .from("profiles")
+    .select("id, full_name, username");
+
+  const profileMap = {};
+  if (profiles) {
+    profiles.forEach((p) => {
+      profileMap[p.id] = p.full_name || p.username;
+    });
+  }
+
+  const { data: payRequests } = await _supabase
+    .from("payment_requests")
+    .select("id, submission_id, status")
+    .eq("status", "pending");
+
+  const payReqMap = {};
+  if (payRequests) {
+    payRequests.forEach((req) => {
+      if (req.submission_id) {
+        payReqMap[req.submission_id] = req.id;
+      }
+    });
+  }
+
+  const tbody = document.getElementById("admin-user-reports-table");
+  if (!tbody) return;
   tbody.innerHTML = "";
 
-  profiles.forEach((user) => {
-    let goodSum = 0;
-    let badSum = 0;
-    let totalAmt = 0;
+  if (!submissions || submissions.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="py-4 text-center text-slate-400 text-xs">No reports found.</td></tr>`;
+    return;
+  }
 
-    if (submissions) {
-      submissions.forEach((sub) => {
-        if (String(sub.user_id) === String(user.id)) {
-          goodSum += Number(sub.good_count || 0);
-          badSum += Number(sub.bad_count || 0);
-          totalAmt += Number(sub.total_amount || 0);
-        }
-      });
+  submissions.forEach((sub) => {
+    const userName = profileMap[sub.user_id] || "Unknown User";
+    const formattedDate = formatCustomDate(sub.created_at);
+    const totalAmount = Number(sub.total_amount || 0);
+
+    const existingReqId = payReqMap[sub.id];
+    let actionHtml = "";
+    let statusBadge = "";
+
+    if (sub.status === "payment_ready") {
+      statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-50 text-purple-600 border border-purple-100">Payment Ready</span>`;
+      actionHtml = `
+        <button onclick="cancelPaymentPending('${existingReqId || ""}', '${sub.id}')" class="bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded-lg font-medium transition cursor-pointer shadow-sm">
+          Cancel Pending
+        </button>
+      `;
+    } else {
+      statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Received</span>`;
+      actionHtml = `
+        <button onclick="sendPaymentToPending('${sub.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-medium transition cursor-pointer shadow-sm">
+          Payment Pending
+        </button>
+      `;
     }
 
     tbody.innerHTML += `
-            <tr class="border-b border-slate-100 text-xs">
-                <td class="py-3 px-4 font-bold text-slate-800">${user.full_name || user.username}</td>
-                <td class="py-3 px-4 font-bold text-emerald-600">${goodSum}</td>
-                <td class="py-3 px-4 font-bold text-rose-500">${badSum}</td>
-                <td class="py-3 px-4 font-bold text-purple-600">${totalAmt} BDT</td>
-                <td class="py-3 px-4">
-                    <span id="status-${user.id}" class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600">Not Ready</span>
-                </td>
-                <td class="py-3 px-4">
-                    <button onclick="sendPaymentToPending('${user.id}', ${goodSum}, ${totalAmt})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-medium transition">
-                        Pay (Send Pending)
-                    </button>
-                </td>
-            </tr>
-        `;
+      <tr class="border-b border-slate-100 text-xs">
+        <td class="py-3 px-4 text-slate-600">${formattedDate}</td>
+        <td class="py-3 px-4 font-bold text-slate-800">${userName}</td>
+        <td class="py-3 px-4 font-semibold text-indigo-600">${sub.category || "N/A"}</td>
+        <td class="py-3 px-4 font-bold">${sub.account_count || 0}</td>
+        <td class="py-3 px-4 font-bold text-emerald-600">${sub.good_count || 0}</td>
+        <td class="py-3 px-4 font-bold text-rose-500">${sub.bad_count || 0}</td>
+        <td class="py-3 px-4 font-bold text-indigo-600">${totalAmount} BDT</td>
+        <td class="py-3 px-4">${statusBadge}</td>
+        <td class="py-3 px-4">${actionHtml}</td>
+      </tr>
+    `;
   });
 }
+async function calculateAndUpdateAmounts() {
+  const rateRegular = Number(document.getElementById("rate-regular").value) || 5;
+  const rate100 = Number(document.getElementById("rate-100").value) || 5.10;
+  const rate500 = Number(document.getElementById("rate-500").value) || 5.30;
 
-async function sendPaymentToPending(userId, goodCount, amount) {
-  const { error } = await _supabase.from("withdrawals").insert([
-    {
-      user_id: String(userId),
-      good_count: goodCount,
-      income: amount,
-      status: "pending",
-      bkash_number: "Admin Direct",
-    },
-  ]);
+  if (!window.allSubmissions || window.allSubmissions.length === 0) {
+    alert("No submissions available to update!");
+    return;
+  }
 
-  if (error) {
-    alert("Error: " + error.message);
+  if (!confirm("Are you sure you want to calculate and update total amounts for all listed user reports?")) {
+    return;
+  }
+
+  let updatedCount = 0;
+
+  for (const sub of window.allSubmissions) {
+    const goodCount = Number(sub.good_count || 0);
+    let currentRate = rateRegular;
+
+    if (goodCount >= 500) {
+      currentRate = rate500;
+    } else if (goodCount >= 100) {
+      currentRate = rate100;
+    }
+
+    const calculatedAmount = Number((goodCount * currentRate).toFixed(2));
+
+    const { error } = await _supabase
+      .from("file_submissions")
+      .update({ total_amount: calculatedAmount })
+      .eq("id", sub.id);
+
+    if (!error) {
+      updatedCount++;
+    } else {
+      console.error("Error updating amount for ID:", sub.id, error.message);
+    }
+  }
+
+  alert(`Successfully updated total amount for ${updatedCount} reports!`);
+  fetchUserAccountInfo();
+}
+
+
+// Payment Pending বাটনে ক্লিক করলে payment_requests টেবিলে status 'payment_ready' হিসেবে জমা হবে
+async function sendPaymentToPending(subId) {
+  const sub = allSubmissions.find((s) => String(s.id) === String(subId));
+  if (!sub) {
+    alert("Submission data not found!");
+    return;
+  }
+
+  // ১. payment_requests টেবিলে status 'payment_ready' দিয়ে ইনসার্ট করা
+  const { error: insertError } = await _supabase
+    .from("payment_requests")
+    .insert([
+      {
+        submission_id: sub.id,
+        user_id: sub.user_id,
+        category: sub.category,
+        file_name: sub.file_name,
+        account_count: sub.account_count || 0,
+        good_count: sub.good_count || 0,
+        bad_count: sub.bad_count || 0,
+        total_amount: sub.total_amount || 0,
+        status: "payment_ready", // এখানে 'pending' এর পরিবর্তে 'payment_ready' করা হলো
+      },
+    ]);
+
+  if (insertError) {
+    alert("Error: " + insertError.message);
+    return;
+  }
+
+  // ২. file_submissions টেবিলের স্ট্যাটাসও 'payment_ready' আপডেট করা
+  const { error: updateError } = await _supabase
+    .from("file_submissions")
+    .update({ status: "payment_ready" })
+    .eq("id", subId);
+
+  if (updateError) {
+    alert("Error updating status: " + updateError.message);
   } else {
-    alert("Payment request sent to pending successfully!");
-    document.getElementById(`status-${userId}`).innerText = "Pending";
-    document.getElementById(`status-${userId}`).className =
-      "px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600";
-    fetchPaymentInfo();
+    fetchUserAccountInfo();
+    if (typeof fetchPaymentInfo === "function") fetchPaymentInfo();
   }
 }
 
-// ৪. পেমেন্ট ইনফরমেশন
+// Cancel Pending বাটনে ক্লিক করলে রিকোয়েস্ট ডিলিট হবে এবং স্ট্যাটাস আবার 'Received' হবে
+async function cancelPaymentPending(requestId, subId) {
+  if (requestId) {
+    await _supabase.from("payment_requests").delete().eq("id", requestId);
+  } else {
+    // ব্যাকআপ হিসেবে submission_id দিয়ে ডিলিট করা
+    await _supabase
+      .from("payment_requests")
+      .delete()
+      .eq("submission_id", subId);
+  }
+
+  // file_submissions টেবিলের স্ট্যাটাস পুনরায় Received করা
+  const { error: updateError } = await _supabase
+    .from("file_submissions")
+    .update({ status: "Received" })
+    .eq("id", subId);
+
+  if (updateError) {
+    alert("Failed to cancel: " + updateError.message);
+  } else {
+    fetchUserAccountInfo();
+    if (typeof fetchPaymentInfo === "function") fetchPaymentInfo();
+  }
+}
+
+// পেমেন্ট ইনফরমেশন এবং স্ট্যাটাস কার্ড লোড করার ফাংশন
 async function fetchPaymentInfo() {
-  const { data: withdrawals, error } = await _supabase
-    .from("withdrawals")
+  const { data: requests, error } = await _supabase
+    .from("payment_requests")
     .select("*")
-    .eq("status", "pending");
+    .in("status", ["payment_ready", "success"])
+    .order("created_at", { ascending: false });
+
   const { data: profiles } = await _supabase
     .from("profiles")
     .select("id, full_name, username");
@@ -458,45 +630,117 @@ async function fetchPaymentInfo() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  if (!withdrawals || withdrawals.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-400 text-xs">No pending payment requests found.</td></tr>`;
+  if (!requests || requests.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-400 text-xs">No payment requests found.</td></tr>`;
+    document.getElementById("stat-total-ready").innerText = "0 BDT";
+    document.getElementById("stat-total-success").innerText = "0 BDT";
+    document.getElementById("stat-success-count").innerText = "0";
     return;
   }
 
-  withdrawals.forEach((item) => {
+  let totalReadyAmount = 0;
+  let totalSuccessAmount = 0;
+  let successCount = 0;
+
+  // ১. টোটাল অ্যামাউন্ট হিসাব করা
+  requests.forEach((item) => {
+    const itemAmount = Number(item.total_amount) || 0;
+    if (item.status === "payment_ready") {
+      totalReadyAmount += itemAmount;
+    } else if (item.status === "success") {
+      totalSuccessAmount += itemAmount;
+      successCount++;
+    }
+  });
+
+  // ২. টপ কার্ডগুলোতে মান বসানো
+  document.getElementById("stat-total-ready").innerText =
+    totalReadyAmount + " BDT";
+  document.getElementById("stat-total-success").innerText =
+    totalSuccessAmount + " BDT";
+  document.getElementById("stat-success-count").innerText = successCount;
+
+  // ৩. টেবিল রো রেন্ডার করা
+  requests.forEach((item) => {
     const userName = profileMap[item.user_id] || "Unknown User";
     const formattedDate = item.created_at
       ? formatCustomDate(item.created_at)
-      : "Today";
+      : "N/A";
+    const itemAmount = Number(item.total_amount) || 0; // সঠিকভাবে অ্যামাউন্ট ডিফাইন করা হলো
+
+    let statusBadge = "";
+    let actionHtml = "";
+
+    if (item.status === "success") {
+      statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Success</span>`;
+      actionHtml = `
+        <button onclick="cancelPaymentSuccess('${item.id}', '${item.submission_id}')" class="bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded-lg font-medium transition cursor-pointer shadow-sm">
+          Cancel Payment
+        </button>
+      `;
+    } else {
+      statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-50 text-purple-600 border border-purple-100">Payment Ready</span>`;
+      actionHtml = `
+        <button onclick="confirmPaymentSuccess('${item.id}', '${item.submission_id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition cursor-pointer shadow-sm">
+          Pay Confirm
+        </button>
+      `;
+    }
 
     tbody.innerHTML += `
-            <tr class="border-b border-slate-100 text-xs">
-                <td class="py-3 px-4 font-bold text-slate-800">${userName}</td>
-                <td class="py-3 px-4 text-slate-600">${formattedDate}</td>
-                <td class="py-3 px-4 font-bold text-emerald-600">${item.good_count || 0}</td>
-                <td class="py-3 px-4 font-bold text-purple-600">${item.income || 0} BDT</td>
-                <td class="py-3 px-4">
-                    <button onclick="confirmPaymentSuccess('${item.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition">
-                        Pay Confirm
-                    </button>
-                </td>
-            </tr>
-        `;
+      <tr class="border-b border-slate-100 text-xs">
+        <td class="py-3 px-4 font-bold text-slate-800">${userName}</td>
+        <td class="py-3 px-4 text-slate-600">${formattedDate}</td>
+        <td class="py-3 px-4 font-bold text-emerald-600">${item.good_count || 0}</td>
+        <td class="py-3 px-4 font-bold text-purple-600">${itemAmount} BDT</td>
+        <td class="py-3 px-4">${statusBadge}</td>
+        <td class="py-3 px-4">${actionHtml}</td>
+      </tr>
+    `;
   });
 }
-
-async function confirmPaymentSuccess(withdrawalId) {
-  const { error } = await _supabase
-    .from("withdrawals")
+// পেমেন্ট কনফার্ম করার ফাংশন (স্ট্যাটাস success করা)
+async function confirmPaymentSuccess(requestId, subId) {
+  const { error: err1 } = await _supabase
+    .from("payment_requests")
     .update({ status: "success" })
-    .eq("id", withdrawalId);
+    .eq("id", requestId);
 
-  if (error) {
-    alert("Failed to confirm payment: " + error.message);
-  } else {
-    alert("Payment confirmed successfully to Success!");
-    fetchPaymentInfo();
+  if (err1) {
+    alert("Failed to confirm payment: " + err1.message);
+    return;
   }
+
+  if (subId && subId !== "undefined") {
+    await _supabase
+      .from("file_submissions")
+      .update({ status: "success" })
+      .eq("id", subId);
+  }
+
+  fetchPaymentInfo();
+}
+
+// ভুলবশত পেমেন্ট হয়ে গেলে তা বাতিল করে পুনরায় payment_ready এ ফিরিয়ে আনা
+async function cancelPaymentSuccess(requestId, subId) {
+  const { error: err1 } = await _supabase
+    .from("payment_requests")
+    .update({ status: "payment_ready" })
+    .eq("id", requestId);
+
+  if (err1) {
+    alert("Failed to cancel payment: " + err1.message);
+    return;
+  }
+
+  if (subId && subId !== "undefined") {
+    await _supabase
+      .from("file_submissions")
+      .update({ status: "payment_ready" })
+      .eq("id", subId);
+  }
+
+  fetchPaymentInfo();
 }
 
 // কলামগুলোর সঠিক অর্ডার বজায় রাখার হেল্পার ফাংশন (Username -> Password -> 2FA -> Others)
@@ -592,4 +836,197 @@ function downloadCurrentCategoryAllData() {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
   XLSX.writeFile(workbook, fileName);
+}
+async function processReportCheck() {
+  const categorySelect = document.getElementById("report-category-select");
+  const selectedCategory = categorySelect.value;
+  const textarea = document.getElementById("good-accounts-input");
+  const rawData = textarea.value.trim();
+
+  if (!selectedCategory) {
+    alert("Please select a category first!");
+    return;
+  }
+
+  if (!rawData) {
+    alert("Please paste some usernames first!");
+    return;
+  }
+
+  // ১. ইনপুট করা গুড ইউজারনেমগুলোকে ট্রিম এবং লোয়ারকেস করে একটি Set এ রাখা
+  const goodList = new Set(
+    rawData
+      .split("\n")
+      .map((u) => u.trim().toLowerCase())
+      .filter(Boolean),
+  );
+
+  // ২. নির্বাচিত ক্যাটাগরির সমস্ত সাবমিশন ডাটাবেজ থেকে ফেচ করা
+  const { data: submissions, error } = await _supabase
+    .from("file_submissions")
+    .select("*")
+    .eq("category", selectedCategory);
+
+  if (error) {
+    alert("Error fetching submissions: " + error.message);
+    return;
+  }
+
+  if (!submissions || submissions.length === 0) {
+    alert(`No submissions found for the category: ${selectedCategory}`);
+    return;
+  }
+
+  let totalUpdated = 0;
+
+  // ৩. সাবমিশনগুলো লুপ চালিয়ে প্রতিটি ফাইলের অ্যাকাউন্ট চেক করা
+  for (const sub of submissions) {
+    let goodCount = 0;
+    let badCount = 0;
+    let parsedData = [];
+
+    if (sub.accounts_data) {
+      try {
+        parsedData =
+          typeof sub.accounts_data === "string"
+            ? JSON.parse(sub.accounts_data)
+            : sub.accounts_data;
+      } catch (e) {
+        console.error("Error parsing accounts_data for submission ID:", sub.id);
+      }
+    }
+
+    if (!Array.isArray(parsedData) || parsedData.length === 0) continue;
+
+    // ৪. প্রতিটি অ্যাকাউন্টের ভেতরের 'username' ফিল্ডটি চেক করা
+    parsedData.forEach((acc) => {
+      let dbUsername = "";
+
+      if (typeof acc === "object" && acc !== null) {
+        const foundKey = Object.keys(acc).find(
+          (k) => k.toLowerCase() === "username",
+        );
+        if (foundKey) {
+          dbUsername = String(acc[foundKey]).trim().toLowerCase();
+        } else {
+          const values = Object.values(acc);
+          if (values.length > 0)
+            dbUsername = String(values[0]).trim().toLowerCase();
+        }
+      }
+
+      if (dbUsername) {
+        if (goodList.has(dbUsername)) {
+          goodCount++;
+        } else {
+          badCount++;
+        }
+      } else {
+        badCount++;
+      }
+    });
+
+    // ৬. ডাটাবেজে শুধুমাত্র good_count এবং bad_count আপডেট করা (স্ট্যাটাস অপরিবর্তিত থাকবে)
+    const { error: updateError } = await _supabase
+      .from("file_submissions")
+      .update({
+        good_count: goodCount,
+        bad_count: badCount,
+      })
+      .eq("id", sub.id);
+
+    if (!updateError) {
+      totalUpdated++;
+    } else {
+      console.error("Update error:", updateError.message);
+    }
+  }
+
+  alert(
+    `Report processed successfully! Updated ${totalUpdated} submissions for ${selectedCategory}.`,
+  );
+  textarea.value = "";
+
+  if (typeof fetchAllReports === "function") fetchAllReports();
+}
+// ট্যাব সুইচ বা পরিবর্তন করার ফাংশন
+function showTab(tabId) {
+  // ১. আইডি তে 'tab-' দিয়ে শুরু হওয়া সকল সেকশন/ট্যাবগুলো হাইড করা
+  const allTabs = document.querySelectorAll('[id^="tab-"]');
+  allTabs.forEach((tab) => {
+    tab.classList.add("hidden");
+  });
+
+  // ২. কাঙ্ক্ষিত ট্যাবটি খুঁজে বের করে ভিজিবল বা শো করা
+  const targetTab = document.getElementById(tabId);
+  if (targetTab) {
+    targetTab.classList.remove("hidden");
+  }
+
+  // ৩. যদি Report Check ট্যাব হয়, তবে রিলোড বা প্রয়োজনীয় ডাটা ফেচ করার ফাংশন কল করতে পারেন
+  if (
+    tabId === "tab-report-check" &&
+    typeof fetchReportCheckData === "function"
+  ) {
+    fetchReportCheckData();
+  }
+}
+
+async function resetReportCheck() {
+  const categorySelect = document.getElementById("report-category-select");
+  const selectedCategory = categorySelect ? categorySelect.value : "";
+
+  if (!selectedCategory) {
+    alert("Please select a category first!");
+    return;
+  }
+
+  if (
+    !confirm(
+      `Are you sure you want to reset all good and bad counts to 0 for category: ${selectedCategory}?`,
+    )
+  ) {
+    return;
+  }
+
+  const { data: submissions, error } = await _supabase
+    .from("file_submissions")
+    .select("*")
+    .eq("category", selectedCategory);
+
+  if (error) {
+    alert("Error fetching submissions: " + error.message);
+    return;
+  }
+
+  if (!submissions || submissions.length === 0) {
+    alert(`No submissions found for the category: ${selectedCategory}`);
+    return;
+  }
+
+  let totalReset = 0;
+
+  for (const sub of submissions) {
+    const { error: updateError } = await _supabase
+      .from("file_submissions")
+      .update({
+        good_count: 0,
+        bad_count: 0,
+      })
+      .eq("id", sub.id);
+
+    if (!updateError) {
+      totalReset++;
+    } else {
+      console.error("Reset error:", updateError.message);
+    }
+  }
+
+  alert(
+    `Successfully reset counts to 0 for ${totalReset} submissions in ${selectedCategory}.`,
+  );
+
+  if (typeof fetchAdminReports === "function") {
+    fetchAdminReports();
+  }
 }

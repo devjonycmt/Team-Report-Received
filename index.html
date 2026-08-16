@@ -44,7 +44,7 @@
               id="btn-users"
               class="w-full text-left px-4 py-2.5 rounded hover:bg-slate-800 font-medium transition"
             >
-              User Accounts
+              User Reports
             </button>
             <button
               onclick="switchTab('payments')"
@@ -52,6 +52,12 @@
               class="w-full text-left px-4 py-2.5 rounded hover:bg-slate-800 font-medium transition"
             >
               Payment Info
+            </button>
+            <button
+              onclick="showTab('tab-report-check')"
+              class="w-full text-left p-3 rounded-lg hover:bg-slate-800 transition"
+            >
+              Report Check
             </button>
           </nav>
         </div>
@@ -302,6 +308,8 @@
                       <th class="py-3 px-4">Total</th>
                       <th class="py-3 px-4">Good</th>
                       <th class="py-3 px-4">Bad</th>
+                      <th class="py-3 px-4">Status</th>
+                      <!-- নতুন স্ট্যাটস কলাম -->
                       <th class="py-3 px-4">Action</th>
                     </tr>
                   </thead>
@@ -313,29 +321,91 @@
             </div>
           </div>
 
-          <!-- 3. User Accounts Tab -->
+          <!-- 3. User Reports Tab (Replaced User Accounts) -->
           <div id="tab-users" class="hidden space-y-6">
             <div
-              class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"
+              class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6"
             >
-              <h3 class="text-lg font-bold text-gray-800 mb-4">
-                User Account Information & Payments
+              <h3 class="text-lg font-bold text-gray-800">
+                Received User Reports & Payments
               </h3>
+
+              <!-- Rate Configuration Section -->
+              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <h4
+                  class="text-xs font-bold text-slate-700 mb-3 uppercase tracking-wider"
+                >
+                  Account Rate Settings (Per Good Account)
+                </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                  <div>
+                    <label
+                      class="block text-xs font-semibold text-slate-600 mb-1"
+                      >Regular Rate (tk)</label
+                    >
+                    <input
+                      type="number"
+                      id="rate-regular"
+                      value="5"
+                      step="0.01"
+                      class="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-600 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      class="block text-xs font-semibold text-slate-600 mb-1"
+                      >100+ Rate (tk)</label
+                    >
+                    <input
+                      type="number"
+                      id="rate-100"
+                      value="5.10"
+                      step="0.01"
+                      class="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-600 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      class="block text-xs font-semibold text-slate-600 mb-1"
+                      >500+ Rate (tk)</label
+                    >
+                    <input
+                      type="number"
+                      id="rate-500"
+                      value="5.30"
+                      step="0.01"
+                      class="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-600 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <button
+                      onclick="calculateAndUpdateAmounts()"
+                      class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg text-xs font-semibold transition cursor-pointer shadow-sm"
+                    >
+                      Submit & Calculate Amount
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                   <thead>
                     <tr
                       class="border-b border-slate-100 text-xs font-semibold text-slate-500"
                     >
+                      <th class="py-3 px-4">Date</th>
                       <th class="py-3 px-4">User Name</th>
-                      <th class="py-3 px-4">Good Accounts</th>
-                      <th class="py-3 px-4">Bad Accounts</th>
-                      <th class="py-3 px-4">Total Amount</th>
-                      <th class="py-3 px-4">Payment Status</th>
+                      <th class="py-3 px-4">Category</th>
+                      <th class="py-3 px-4">Total Account</th>
+                      <th class="py-3 px-4">Good</th>
+                      <th class="py-3 px-4">Bad</th>
+                      <th class="py-3 px-4">Amount</th>
+                      <th class="py-3 px-4">Status</th>
                       <th class="py-3 px-4">Action</th>
                     </tr>
                   </thead>
-                  <tbody id="admin-users-table">
+                  <tbody id="admin-user-reports-table">
                     <!-- Dynamic Data -->
                   </tbody>
                 </table>
@@ -343,8 +413,58 @@
             </div>
           </div>
 
-          <!-- 4. Payment Info Tab -->
+          <!-- Payment 4 Info Tab -->
           <div id="tab-payments" class="hidden space-y-6">
+            <!-- টপ স্ট্যাটাস কার্ডসমূহ -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div
+                class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"
+              >
+                <p
+                  class="text-xs font-semibold text-slate-400 uppercase tracking-wider"
+                >
+                  Total Payment Ready
+                </p>
+                <h3
+                  id="stat-total-ready"
+                  class="text-2xl font-bold text-purple-600 mt-2"
+                >
+                  0 BDT
+                </h3>
+              </div>
+              <div
+                class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"
+              >
+                <p
+                  class="text-xs font-semibold text-slate-400 uppercase tracking-wider"
+                >
+                  Total Success Payment
+                </p>
+                <h3
+                  id="stat-total-success"
+                  class="text-2xl font-bold text-emerald-600 mt-2"
+                >
+                  0 BDT
+                </h3>
+              </div>
+              <div
+                class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"
+              >
+                <p
+                  class="text-xs font-semibold text-slate-400 uppercase tracking-wider"
+                >
+                  Successful Payments Count
+                </p>
+                <h3
+                  id="stat-success-count"
+                  class="text-2xl font-bold text-indigo-600 mt-2"
+                >
+                  0
+                </h3>
+              </div>
+            </div>
+
+            <!-- পেমেন্ট কনফার্মেশন টেবিল -->
             <div
               class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"
             >
@@ -361,6 +481,7 @@
                       <th class="py-3 px-4">Date</th>
                       <th class="py-3 px-4">Good Accounts</th>
                       <th class="py-3 px-4">Total Amount</th>
+                      <th class="py-3 px-4">Status</th>
                       <th class="py-3 px-4">Action</th>
                     </tr>
                   </thead>
@@ -369,6 +490,57 @@
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+          <!-- Report Check Tab -->
+          <div id="tab-report-check" class="hidden space-y-6">
+            <div
+              class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"
+            >
+              <h3 class="text-lg font-bold text-gray-800 mb-2">Check Report</h3>
+              <p class="text-sm text-slate-500 mb-4">
+                ক্যাটাগরি সিলেক্ট করুন এবং নিচে গুড অ্যাকাউন্টের ইউজারনেমগুলো
+                পেস্ট করুন (প্রতিটি নতুন লাইনে)।
+              </p>
+
+              <!-- Category Selection -->
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Select Category</label
+                >
+                <select
+                  id="report-category-select"
+                  class="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                >
+                  <option value="" disabled selected>
+                    Select a category...
+                  </option>
+                  <option value="Instagram 2fa">Instagram 2fa</option>
+                  <option value="Instagram Cookies">Instagram Cookies</option>
+                  <!-- প্রয়োজন হলে আরও ক্যাটাগরি যোগ করুন -->
+                </select>
+              </div>
+
+              <!-- Textarea for Good Usernames -->
+              <textarea
+                id="good-accounts-input"
+                rows="10"
+                class="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                placeholder="Enter good usernames here..."
+              ></textarea>
+
+              <button
+                onclick="processReportCheck()"
+                class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-indigo-200"
+              >
+                Process Report & Update
+              </button>
+              <button
+                onclick="resetReportCheck()"
+                class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-indigo-200"
+              >
+                Reset Report
+              </button>
             </div>
           </div>
         </main>
