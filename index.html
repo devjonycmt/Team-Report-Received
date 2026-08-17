@@ -53,6 +53,14 @@
             >
               Payment Info
             </button>
+            <!-- Sidebar Navigation-এ Payment Info এর নিচে উইথড্র বাটন যোগ করুন -->
+            <button
+              onclick="switchTab('withdraws')"
+              id="btn-withdraws"
+              class="w-full text-left px-4 py-2.5 rounded hover:bg-slate-800 font-medium transition"
+            >
+              Withdraw Requests
+            </button>
           </nav>
         </div>
         <div class="p-4 text-xs text-slate-400">Admin Version: v1.0.0</div>
@@ -390,6 +398,127 @@
                     <!-- Dynamic Data -->
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- উইথড্র ট্যাব কন্টেন্ট -->
+          <div id="tab-withdraws" class="tab-content space-y-6 hidden">
+            <!-- ওপরের ৩টি স্ট্যাটাস কার্ড -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div
+                class="bg-white p-5 rounded-xl shadow-sm border border-slate-100"
+              >
+                <p
+                  class="text-xs font-bold text-slate-400 uppercase tracking-wider"
+                >
+                  TOTAL SUCCESS PAYMENT
+                </p>
+                <h3
+                  id="stat-withdraw-total-payment"
+                  class="text-2xl font-black text-emerald-600 mt-1"
+                >
+                  0 BDT
+                </h3>
+              </div>
+              <div
+                class="bg-white p-5 rounded-xl shadow-sm border border-slate-100"
+              >
+                <p
+                  class="text-xs font-bold text-slate-400 uppercase tracking-wider"
+                >
+                  TOTAL PENDING WITHDRAW
+                </p>
+                <h3
+                  id="stat-total-withdraw-pending"
+                  class="text-2xl font-black text-amber-500 mt-1"
+                >
+                  0 BDT
+                </h3>
+              </div>
+              <div
+                class="bg-white p-5 rounded-xl shadow-sm border border-slate-100"
+              >
+                <p
+                  class="text-xs font-bold text-slate-400 uppercase tracking-wider"
+                >
+                  TOTAL SUCCESS WITHDRAW
+                </p>
+                <h3
+                  id="stat-total-withdraw-success"
+                  class="text-2xl font-black text-indigo-600 mt-1"
+                >
+                  0 BDT
+                </h3>
+              </div>
+            </div>
+
+            <!-- নিচের টেবিল দুটি পাশাপাশি দেখানোর জন্য Grid Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <!-- বাম পাশ: Users Financial Summary (৬ কলাম) -->
+              <div
+                class="lg:col-span-6 bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col"
+              >
+                <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+                  <h3 class="font-bold text-slate-800 text-sm">
+                    Users Financial Summary
+                  </h3>
+                  <p class="text-[11px] text-slate-400">
+                    Total earned, total withdraw & current balance
+                  </p>
+                </div>
+                <div class="overflow-x-auto flex-1">
+                  <table class="w-full text-left border-collapse">
+                    <thead>
+                      <tr
+                        class="border-b border-slate-100 text-[10px] text-slate-400 uppercase tracking-wider bg-slate-50/30"
+                      >
+                        <th class="py-3 px-3">User Name</th>
+                        <th class="py-3 px-3 text-center">Good Acc</th>
+                        <th class="py-3 px-3 text-right">Total Earn</th>
+                        <th class="py-3 px-3 text-right">Withdraw</th>
+                        <th class="py-3 px-3 text-right">Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody
+                      id="admin-success-payments-summary-table"
+                      class="divide-y divide-slate-50"
+                    ></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- ডান পাশ: User Withdraw Requests (৬ কলাম) -->
+              <div
+                class="lg:col-span-6 bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col"
+              >
+                <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+                  <h3 class="font-bold text-slate-800 text-sm">
+                    User Withdraw Requests
+                  </h3>
+                  <p class="text-[11px] text-slate-400">
+                    Manage pending and successful withdraws
+                  </p>
+                </div>
+                <div class="overflow-x-auto flex-1">
+                  <table class="w-full text-left border-collapse">
+                    <thead>
+                      <tr
+                        class="border-b border-slate-100 text-[10px] text-slate-400 uppercase tracking-wider bg-slate-50/30"
+                      >
+                        <th class="py-3 px-3">User Name</th>
+                        <th class="py-3 px-3">bKash Number</th>
+                        <th class="py-3 px-3">Amount</th>
+                        <th class="py-3 px-3">Status</th>
+                        <th class="py-3 px-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody
+                      id="admin-withdraws-table"
+                      class="divide-y divide-slate-50"
+                    ></tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>

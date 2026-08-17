@@ -41,10 +41,15 @@ window.onload = function () {
   fetchAdminReports();
   fetchUserAccountInfo();
   fetchPaymentInfo();
+  fetchAdminWithdraws();
+
+  // পেজ লোড হওয়ার সাথে সাথেই ড্যাশবোর্ড ট্যাব ডিফল্টভাবে দেখানোর জন্য এটি যুক্ত করুন:
+  switchTab("dashboard");
 };
 
 function switchTab(tabName) {
-  const tabs = ["dashboard", "reports", "users", "payments"];
+  const tabs = ["dashboard", "reports", "users", "payments", "withdraws"];
+
   tabs.forEach((t) => {
     const tabEl = document.getElementById(`tab-${t}`);
     const btnEl = document.getElementById(`btn-${t}`);
@@ -52,17 +57,18 @@ function switchTab(tabName) {
     if (btnEl) btnEl.classList.remove("bg-slate-800");
   });
 
-  const activeTab = document.getElementById(`tab-${tabName}`);
-  const activeBtn = document.getElementById(`btn-${tabName}`);
+  const activeTabTarget = document.getElementById(`tab-${tabName}`);
+  const activeBtnTarget = document.getElementById(`btn-${tabName}`);
 
-  if (activeTab) activeTab.classList.remove("hidden");
-  if (activeBtn) activeBtn.classList.add("bg-slate-800");
+  if (activeTabTarget) activeTabTarget.classList.remove("hidden");
+  if (activeBtnTarget) activeBtnTarget.classList.add("bg-slate-800");
 
   const titles = {
     dashboard: "Dashboard Overview",
     reports: "Reports Received",
     users: "User Reports",
     payments: "Payment Information",
+    withdraws: "Withdraw Management",
   };
 
   const pageTitleEl = document.getElementById("page-title");
@@ -298,17 +304,28 @@ function renderReportsTable(dataToRender) {
     const userName = allProfiles[sub.user_id] || "Unknown User";
     const formattedDate = formatCustomDate(sub.created_at);
 
-    const status = sub.status || "Pending";
+    const status = String(sub.status || "pending").toLowerCase();
     let statusHtml = "";
-    if (status === "Received") {
+    let actionHtml = "";
+
+    // স্ট্যাটাস অনুযায়ী ব্যাজ এবং বাটন নির্ধারণ লজিক
+    if (status === "pending" || status === "") {
+      statusHtml = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-100">Pending</span>`;
+      actionHtml = `<button onclick="updateSubmissionStatus('${sub.id}', 'Received')" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold transition shadow-sm cursor-pointer">Mark Received</button>`;
+    } else if (status === "received") {
       statusHtml = `
         <div class="flex items-center gap-2">
           <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Received</span>
           <button onclick="updateSubmissionStatus('${sub.id}', 'Pending')" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-1 rounded-md text-[10px] font-bold transition cursor-pointer shadow-sm" title="Cancel Received status">Cancel</button>
         </div>
       `;
-    } else {
-      statusHtml = `<button onclick="updateSubmissionStatus('${sub.id}', 'Received')" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold transition shadow-sm cursor-pointer">Mark Received</button>`;
+      actionHtml = `<span class="text-xs font-semibold text-emerald-600">Received</span>`;
+    } else if (status === "success") {
+      statusHtml = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Success</span>`;
+      actionHtml = `<span class="text-xs font-semibold text-emerald-600">Completed</span>`;
+    } else if (status === "payment_ready") {
+      statusHtml = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-50 text-purple-600 border border-purple-100">Payment Ready</span>`;
+      actionHtml = `<span class="text-xs font-semibold text-purple-600">Payment Ready</span>`;
     }
 
     tbody.innerHTML += `
@@ -322,9 +339,12 @@ function renderReportsTable(dataToRender) {
         <td class="py-3 px-4 font-bold text-rose-500">${sub.bad_count || 0}</td>
         <td class="py-3 px-4">${statusHtml}</td>
         <td class="py-3 px-4">
-          <button onclick='downloadCategoryExcel(${JSON.stringify(sub.accounts_data || [])}, "${sub.category || "Report"}")' class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition cursor-pointer">
-            <i class="fa-solid fa-download mr-1"></i> Download
-          </button>
+          <div class="flex items-center gap-2">
+            ${actionHtml}
+            <button onclick='downloadCategoryExcel(${JSON.stringify(sub.accounts_data || [])}, "${sub.category || "Report"}")' class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition cursor-pointer">
+              <i class="fa-solid fa-download mr-1"></i> Download
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -893,4 +913,237 @@ function downloadCurrentCategoryAllData() {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
   XLSX.writeFile(workbook, fileName);
+}
+
+let allWithdrawRequests = [];
+async function fetchAdminWithdraws() {
+  // ১. উইথড্র রিকোয়েস্ট ফেচ করা
+  const { data: withdraws, error } = await _supabase
+    .from("withdraws")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching withdraws:", error);
+  }
+  allWithdrawRequests = withdraws || [];
+
+  // ২. payment_requests টেবিল থেকে পেমেন্ট রিকোয়েস্ট ফেচ করা
+  const { data: payRequests, error: payError } = await _supabase
+    .from("payment_requests")
+    .select("*");
+
+  if (payError) {
+    console.error("Error fetching payment_requests:", payError);
+    allPaymentRequests = [];
+  } else {
+    allPaymentRequests = payRequests || [];
+  }
+
+  const dateInput = document.getElementById("withdraw-date-filter");
+  if (dateInput) {
+    if (!dateInput.value) {
+      const d = new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      dateInput.value = `${year}-${month}-${day}`;
+    }
+
+    if (!dateInput.hasAttribute("data-listener")) {
+      dateInput.setAttribute("data-listener", "true");
+      dateInput.addEventListener("change", function () {
+        renderAdminWithdrawsTable();
+      });
+    }
+  }
+
+  renderAdminWithdrawsTable();
+}
+
+async function renderAdminWithdrawsTable() {
+  const selectedDate = document.getElementById("withdraw-date-filter")
+    ? document.getElementById("withdraw-date-filter").value
+    : "";
+
+  // উইথড্র ফিল্টার তারিখ অনুযায়ী
+  let filteredWithdraws = allWithdrawRequests.filter((item) => {
+    if (!item.created_at) return false;
+    const itemDateStr = item.created_at.split("T")[0];
+    return selectedDate ? itemDateStr === selectedDate : true;
+  });
+
+  // payment_requests ফিল্টার (যেগুলোর স্ট্যাটাস success)
+  let filteredPaymentRequests = allPaymentRequests.filter((item) => {
+    const status = String(item.status || "").toLowerCase();
+    const isSuccess =
+      status === "success" || status === "completed" || status === "paid";
+    if (!isSuccess) return false;
+
+    if (!selectedDate) return true;
+    if (!item.created_at) return false;
+    return item.created_at.split("T")[0] === selectedDate;
+  });
+
+  // ইউজারদের নাম পাওয়ার জন্য প্রোফাইল ম্যাপ তৈরি
+  const { data: profiles } = await _supabase
+    .from("profiles")
+    .select("id, full_name, username");
+
+  const profileMap = {};
+  if (profiles) {
+    profiles.forEach((p) => {
+      profileMap[p.id] = p.full_name || p.username;
+    });
+  }
+
+  // কার্ডের জন্য মোট সফল পেমেন্ট অ্যামাউন্ট হিসাব
+  let totalSuccessPaymentAmount = 0;
+  filteredPaymentRequests.forEach((p) => {
+    totalSuccessPaymentAmount += Number(p.total_amount || p.amount) || 0;
+  });
+
+  let totalPendingAmount = 0;
+  let totalSuccessAmount = 0;
+
+  allWithdrawRequests.forEach((item) => {
+    const amt = Number(item.amount) || 0;
+    if (item.status === "pending") {
+      totalPendingAmount += amt;
+    } else if (item.status === "success") {
+      totalSuccessAmount += amt;
+    }
+  });
+
+  // কার্ডগুলোতে ভ্যালু বসানো
+  const paymentCardEl = document.getElementById("stat-withdraw-total-payment");
+  if (paymentCardEl) {
+    paymentCardEl.innerText = totalSuccessPaymentAmount + " BDT";
+  }
+
+  const pendingEl = document.getElementById("stat-total-withdraw-pending");
+  if (pendingEl) pendingEl.innerText = totalPendingAmount + " BDT";
+
+  const successEl = document.getElementById("stat-total-withdraw-success");
+  if (successEl) successEl.innerText = totalSuccessAmount + " BDT";
+
+  // --- ১. বাম পাশের টেবিল রেন্ডার: User Financial Summary (Earned, Withdraw, Balance) ---
+  const leftTbody = document.getElementById(
+    "admin-success-payments-summary-table",
+  );
+  if (leftTbody) {
+    leftTbody.innerHTML = "";
+
+    // প্রতিটি ইউজারের মোট সফল পেমেন্ট এবং গুড অ্যাকাউন্ট হিসাব করা
+    const userSummaryMap = {};
+
+    // সমস্ত সফল পেমেন্ট যোগ করা (তারিখের ফিল্টার ছাড়াই টোটাল হিসাব রাখার জন্য অথবা ফিল্টারসহ)
+    allPaymentRequests.forEach((item) => {
+      const status = String(item.status || "").toLowerCase();
+      if (status !== "success" && status !== "completed" && status !== "paid")
+        return;
+
+      const uid = item.user_id || "unknown";
+      if (!userSummaryMap[uid]) {
+        userSummaryMap[uid] = { goodCount: 0, totalEarn: 0, totalWithdraw: 0 };
+      }
+      userSummaryMap[uid].goodCount += Number(item.good_count) || 0;
+      userSummaryMap[uid].totalEarn +=
+        Number(item.total_amount || item.amount) || 0;
+    });
+
+    // প্রতিটি ইউজারের মোট সফল উইথড্র অ্যামাউন্ট যোগ করা
+    allWithdrawRequests.forEach((item) => {
+      const status = String(item.status || "").toLowerCase();
+      if (status !== "success") return; // শুধুমাত্র সফল উইথড্রগুলো ব্যালেন্স থেকে কাটবে
+
+      const uid = item.user_id || "unknown";
+      if (!userSummaryMap[uid]) {
+        userSummaryMap[uid] = { goodCount: 0, totalEarn: 0, totalWithdraw: 0 };
+      }
+      userSummaryMap[uid].totalWithdraw += Number(item.amount) || 0;
+    });
+
+    const summaryKeys = Object.keys(userSummaryMap);
+    if (summaryKeys.length === 0) {
+      leftTbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-400 text-xs">No financial data found.</td></tr>`;
+    } else {
+      summaryKeys.forEach((uid) => {
+        const userName = profileMap[uid] || "Unknown User";
+        const summary = userSummaryMap[uid];
+        const currentBalance = summary.totalEarn - summary.totalWithdraw; // কারেন্ট ব্যালেন্স হিসাব
+
+        leftTbody.innerHTML += `
+          <tr class="border-b border-slate-100 text-xs">
+            <td class="py-3 px-2 font-bold text-slate-800">${userName}</td>
+            <td class="py-3 px-2 text-center font-semibold text-emerald-600">${summary.goodCount}</td>
+            <td class="py-3 px-2 text-right font-bold text-indigo-600">${summary.totalEarn} BDT</td>
+            <td class="py-3 px-2 text-right font-bold text-rose-500">${summary.totalWithdraw} BDT</td>
+            <td class="py-3 px-2 text-right font-black text-emerald-700">${currentBalance} BDT</td>
+          </tr>
+        `;
+      });
+    }
+  }
+
+  // --- ২. ডান পাশের টেবিল রেন্ডার: Withdraw Management Table ---
+  const tbody = document.getElementById("admin-withdraws-table");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  if (!filteredWithdraws || filteredWithdraws.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-400 text-xs">No withdraw requests found.</td></tr>`;
+    return;
+  }
+
+  filteredWithdraws.forEach((item) => {
+    const userName = profileMap[item.user_id] || "Unknown User";
+    const amount = Number(item.amount) || 0;
+    const bkashNum = item.bkash_number || "N/A";
+
+    let statusBadge = "";
+    let actionHtml = "";
+
+    if (item.status === "success") {
+      statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">Success</span>`;
+      actionHtml = `
+        <button onclick="updateWithdrawStatus('${item.id}', 'pending')" class="bg-rose-500 hover:bg-rose-600 text-white px-2.5 py-1 rounded-lg font-medium transition cursor-pointer shadow-sm text-[11px]">
+          Cancel
+        </button>
+      `;
+    } else {
+      statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-100">Pending</span>`;
+      actionHtml = `
+        <button onclick="updateWithdrawStatus('${item.id}', 'success')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-lg font-medium transition cursor-pointer shadow-sm text-[11px]">
+          Payment Now
+        </button>
+      `;
+    }
+
+    tbody.innerHTML += `
+      <tr class="border-b border-slate-100 text-xs">
+        <td class="py-3 px-3 font-bold text-slate-800">${userName}</td>
+        <td class="py-3 px-3 font-semibold text-slate-700">${bkashNum}</td>
+        <td class="py-3 px-3 font-bold text-indigo-600">${amount} BDT</td>
+        <td class="py-3 px-3">${statusBadge}</td>
+        <td class="py-3 px-3 text-right">${actionHtml}</td>
+      </tr>
+    `;
+  });
+}
+
+// Payment Now বাটনে ক্লিক করলে স্ট্যাটাস success করার ফাংশন
+async function updateWithdrawStatus(withdrawId, newStatus) {
+  const { error } = await _supabase
+    .from("withdraws")
+    .update({ status: newStatus })
+    .eq("id", withdrawId);
+
+  if (error) {
+    alert("Failed to update withdraw status: " + error.message);
+    return;
+  }
+
+  // সফলভাবে আপডেট হলে লিস্ট রিফ্রেশ করবে
+  fetchAdminWithdraws();
 }
