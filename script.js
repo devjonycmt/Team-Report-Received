@@ -581,7 +581,6 @@ function calculateEditValues() {
     totalAmount.toFixed(2) + " BDT";
 }
 
-// এডিট করা ডাটা Supabase-এ সেভ করার ফাংশন
 async function saveUserReportEdit() {
   if (!currentEditSub) return;
   const totalAcc = Number(currentEditSub.account_count || 0);
@@ -589,15 +588,16 @@ async function saveUserReportEdit() {
     parseInt(document.getElementById("edit-good-input").value) || 0;
   const badAcc = totalAcc - goodAcc;
 
-  let rate = 5.0;
+  // আপনার আসল রেট পলিসি এখানে বসানো হলো
+  let rate = 4.5;
   if (goodAcc >= 500) {
-    rate = 5.3;
-  } else if (goodAcc >= 100) {
-    rate = 5.1;
-  } else {
     rate = 5.0;
+  } else {
+    rate = 4.5;
   }
-  const totalAmount = goodAcc * rate;
+
+  // মোট অ্যামাউন্ট হিসাব (ফ্লোটিং-পয়েন্ট বা ডেটাবেজ এরর এড়াতে Math.round ব্যবহার করা হয়েছে)
+  const totalAmount = Math.round(goodAcc * rate);
 
   // file_submissions টেবিলে আপডেট করা
   const { error } = await _supabase
@@ -614,7 +614,7 @@ async function saveUserReportEdit() {
     return;
   }
 
-  // যদি payment_requests টেবিলে এন্ট্রি থাকে তবে সেখানেও আপডেট করা
+  // payment_requests টেবিলে এন্ট্রি থাকলে সেখানেও আপডেট করা[cite: 2]
   await _supabase
     .from("payment_requests")
     .update({
