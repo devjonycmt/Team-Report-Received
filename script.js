@@ -339,13 +339,17 @@ function renderReportsTable(dataToRender) {
         <td class="py-3 px-4 font-bold text-rose-500">${sub.bad_count || 0}</td>
         <td class="py-3 px-4">${statusHtml}</td>
         <td class="py-3 px-4">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
             ${actionHtml}
             <button onclick='downloadCategoryExcel(${JSON.stringify(sub.accounts_data || [])}, "${sub.category || "Report"}")' class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition cursor-pointer">
               <i class="fa-solid fa-download mr-1"></i> Download
             </button>
+<button onclick="openDeleteModal('${sub.id}')" class="bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shadow-sm" title="Delete Report">
+  <i class="fa-solid fa-trash"></i>
+</button>
           </div>
         </td>
+        
       </tr>
     `;
   });
@@ -1148,4 +1152,68 @@ async function updateWithdrawStatus(withdrawId, newStatus) {
 
   // সফলভাবে আপডেট হলে লিস্ট রিফ্রেশ করবে
   fetchAdminWithdraws();
+}
+
+async function deleteSubmission(subId) {
+  if (
+    !confirm("আপনি কি নিশ্চিতভাবে এই রিপোর্টটি ডাটাবেজ থেকে মুছে ফেলতে চান?")
+  ) {
+    return;
+  }
+
+  // যদি payment_requests টেবিলে এই সাবমিশনের কোনো পেমেন্ট রিকোয়েস্ট থাকে, তা আগে ডিলিট করা
+  await _supabase.from("payment_requests").delete().eq("submission_id", subId);
+
+  // মূল file_submissions টেবিল থেকে ফাইলটি ডিলিট করা
+  const { error } = await _supabase
+    .from("file_submissions")
+    .delete()
+    .eq("id", subId);
+
+  if (error) {
+    alert("ডিলিট করতে ব্যর্থ হয়েছে: " + error.message);
+  } else {
+    // সফলভাবে ডিলিট হওয়ার পর ড্যাশবোর্ড ও রিপোর্ট টেবিল আপডেট করা
+    fetchAdminReports();
+    fetchAdminDashboardStats();
+  }
+}
+
+let subIdToDelete = null;
+
+// মডাল ওপেন করার ফাংশন
+function openDeleteModal(subId) {
+  subIdToDelete = subId;
+  document.getElementById("delete-confirm-modal").classList.remove("hidden");
+}
+
+// মডাল বন্ধ করার ফাংশন
+function closeDeleteModal() {
+  document.getElementById("delete-confirm-modal").classList.add("hidden");
+  subIdToDelete = null;
+}
+
+// আসল ডিলিট অপারেশন
+async function performDelete() {
+  if (!subIdToDelete) return;
+
+  // পেমেন্ট রিকোয়েস্ট থেকে ডিলিট করা
+  await _supabase
+    .from("payment_requests")
+    .delete()
+    .eq("submission_id", subIdToDelete);
+
+  // মূল ফাইল সাবমিশন থেকে ডিলিট করা
+  const { error } = await _supabase
+    .from("file_submissions")
+    .delete()
+    .eq("id", subIdToDelete);
+
+  if (error) {
+    alert("মুছে ফেলতে সমস্যা হয়েছে: " + error.message);
+  } else {
+    fetchAdminReports();
+    fetchAdminDashboardStats();
+    closeDeleteModal(); // কাজ শেষে মডাল বন্ধ
+  }
 }
