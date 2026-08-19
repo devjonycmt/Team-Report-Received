@@ -562,13 +562,11 @@ function calculateEditValues() {
   document.getElementById("edit-bad-display").value = badAcc;
 
   // প্রাইসিং টায়ার নির্ধারণ
-  let rate = 5.0;
+  let rate = 4.5;
   if (goodAcc >= 500) {
-    rate = 5.3;
-  } else if (goodAcc >= 100) {
-    rate = 5.1;
-  } else {
     rate = 5.0;
+  } else {
+    rate = 4.5;
   }
 
   const totalAmount = goodAcc * rate;
