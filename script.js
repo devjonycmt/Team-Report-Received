@@ -561,7 +561,7 @@ function calculateEditValues() {
   const badAcc = totalAcc - goodAcc;
   document.getElementById("edit-bad-display").value = badAcc;
 
-  // প্রাইসিং টায়ার নির্ধারণ
+  // প্রাইসিং টায়ার নির্ধারণ
   let rate = 4.5;
   if (goodAcc >= 500) {
     rate = 5.0;
@@ -569,7 +569,11 @@ function calculateEditValues() {
     rate = 4.5;
   }
 
-  const totalAmount = goodAcc * rate;
+  // ফ্লোটিং-পয়েন্ট ও ডেটাবেজ এরর এড়াতে toFixed ব্যবহার করা হয়েছে
+  const totalAmount = parseFloat((goodAcc * rate).toFixed(2));
+
+  // অথবা যদি আপনার ডাটাবেজে পূর্ণসংখ্যা (Integer) সেভ করতে চান, তবে Math.round() ব্যবহার করতে পারেন:
+  // const totalAmount = Math.round(goodAcc * rate);
 
   document.getElementById("edit-rate-display").innerText =
     rate.toFixed(2) + " BDT";
