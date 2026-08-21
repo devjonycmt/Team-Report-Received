@@ -566,11 +566,11 @@ function calculateEditValues() {
   document.getElementById("edit-bad-display").value = badAcc;
 
   // প্রাইসিং টায়ার নির্ধারণ
-  let rate = 4.5;
+  let rate = 4.0;
   if (goodAcc >= 500) {
-    rate = 5.0;
-  } else {
     rate = 4.5;
+  } else {
+    rate = 4.0;
   }
 
   // ফ্লোটিং-পয়েন্ট ও ডেটাবেজ এরর এড়াতে toFixed ব্যবহার করা হয়েছে
