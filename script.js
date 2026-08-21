@@ -592,12 +592,12 @@ async function saveUserReportEdit() {
     parseInt(document.getElementById("edit-good-input").value) || 0;
   const badAcc = totalAcc - goodAcc;
 
-  // আপনার আসল রেট পলিসি এখানে বসানো হলো
-  let rate = 4.5;
+  // নতুন রেট পলিসি: ১-৪৯৯ পর্যন্ত ৪.০০ টাকা এবং ৫০০ বা তার বেশি হলে ৪.৫০ টাকা
+  let rate = 4.0;
   if (goodAcc >= 500) {
-    rate = 5.0;
-  } else {
     rate = 4.5;
+  } else {
+    rate = 4.0;
   }
 
   // মোট অ্যামাউন্ট হিসাব (ফ্লোটিং-পয়েন্ট বা ডেটাবেজ এরর এড়াতে Math.round ব্যবহার করা হয়েছে)
@@ -618,7 +618,7 @@ async function saveUserReportEdit() {
     return;
   }
 
-  // payment_requests টেবিলে এন্ট্রি থাকলে সেখানেও আপডেট করা[cite: 2]
+  // payment_requests টেবিলে এন্ট্রি থাকলে সেখানেও আপডেট করা
   await _supabase
     .from("payment_requests")
     .update({
